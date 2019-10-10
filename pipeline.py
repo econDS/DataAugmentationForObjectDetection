@@ -4,9 +4,7 @@ import numpy as np
 import cv2 
 import matplotlib.pyplot as plt 
 import glob
-
-sample_img = "/home/kevin/ascent/dataset/apolloScape/road02_ins/ColorImage/Record001/Camera 5/170927_063847913_Camera_5.jpg"
-sample_lbl = "/home/kevin/ascent/dataset/apolloScape/road02_ins/ColorImage/Record001/Camera 5/170927_063847913_Camera_5.txt"
+import argparse
 
 def fromYoloLabel(img, yolo_label):
     file_reader = open(yolo_label, "r")
@@ -47,30 +45,32 @@ def toYoloLabel(img, bboxes):
     return "\n".join(ret)
 
 
-target_folder = "/home/kevin/ascent/dataset/apolloScape/road02_ins/ColorImage/Record001/Camera 5/"
-new_folder = "/home/kevin/ascent/dataset/apolloScape/road02_ins/ColorImage/Record001/Camera 5/augmented/"
+def main(args):
+    if not os.path.exists(new_folder):
+        os.mkdir(new_folder)
 
-if not os.path.exists(new_folder):
-    os.mkdir(new_folder)
+    for each_txt in glob.glob(os.path.join(target_folder, "*.txt")):
+        each_img = each_txt.replace(".txt", ".jpg")
 
-for each_txt in glob.glob(os.path.join(target_folder, "*.txt")):
-    each_img = each_txt.replace(".txt", ".jpg")
-
-    img = cv2.imread(each_img)[:,:,::-1]   #opencv loads images in bgr. the [:,:,::-1] does bgr -> rgb
-    bboxes = fromYoloLabel(img, each_txt)
-    seq = Sequence([RandomHorizontalFlip(0.5), conditionalZoomIn(3)])
-    img_, bboxes_ = seq(img.copy(), bboxes.copy())
-    yolo_bboxes = toYoloLabel(img_, bboxes_)
-    
-    # write new img
-    img_ = cv2.cvtColor(img_, cv2.COLOR_BGR2RGB)
-    cv2.imwrite(os.path.join(new_folder, os.path.basename(each_img)), img_)
-    # write new txt
-    txt_writter = open(os.path.join(new_folder, os.path.basename(each_txt)), "w+")
-    txt_writter.write(yolo_bboxes)
-    txt_writter.close()
+        img = cv2.imread(each_img)[:,:,::-1]   #opencv loads images in bgr. the [:,:,::-1] does bgr -> rgb
+        bboxes = fromYoloLabel(img, each_txt)
+        seq = Sequence([RandomHorizontalFlip(0.5), conditionalZoomIn(3)])
+        img_, bboxes_ = seq(img.copy(), bboxes.copy())
+        yolo_bboxes = toYoloLabel(img_, bboxes_)
+        
+        # write new img
+        img_ = cv2.cvtColor(img_, cv2.COLOR_BGR2RGB)
+        cv2.imwrite(os.path.join(new_folder, os.path.basename(each_img)), img_)
+        # write new txt
+        txt_writter = open(os.path.join(new_folder, os.path.basename(each_txt)), "w+")
+        txt_writter.write(yolo_bboxes)
+        txt_writter.close()
 
 
+args = argparse.ArgumentParser()
+args.add_argument('--target_folder', type=str, default="/home/kevin/ascent/dataset/apolloScape/road02_ins/ColorImage/Record001/Camera\ 5/")
+args.add_argument('--new_folder', type=str, default="/home/kevin/ascent/dataset/apolloScape/road02_ins/ColorImage/Record001/augmented_Camera\ 5/") 
+main(args)
 #print(yolo_bboxes)
 #plotted_img = draw_rect(img_, bboxes_)
 #plt.imshow(plotted_img)
