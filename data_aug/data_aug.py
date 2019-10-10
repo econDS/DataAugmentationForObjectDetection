@@ -358,8 +358,8 @@ class Translate(object):
         self.translate_x = translate_x
         self.translate_y = translate_y
 
-        assert self.translate_x > 0 and self.translate_x < 1
-        assert self.translate_y > 0 and self.translate_y < 1
+        #assert self.translate_x > 0 and self.translate_x < 1
+        #assert self.translate_y > 0 and self.translate_y < 1
  
 
     def __call__(self, img, bboxes):        
@@ -403,7 +403,43 @@ class Translate(object):
         
         return img, bboxes
     
-    
+class conditionalZoomIn(object):
+    def __init__(self, max_zoom):
+        self.max_zoom = max_zoom
+        
+    def __call__(self, img, bboxes):  
+        chosen_box = bboxes[random.randint(0, len(bboxes)-1)]
+        img_shape = [img.shape[1], img.shape[0]]
+
+        # this ratio indicates the straight direction toward interested object center
+        ratio = [x/y for x,y in zip(chosen_box, img_shape)]
+
+        # Use a factor to randomly close to the center of the interested object
+        random_transform_factor = [random.uniform(0.4, 1), random.uniform(0.4, 1)]
+        ratio = [x*y for x,y in zip(ratio, random_transform_factor)]
+
+        # translate using the ratio 
+        img_, bboxes_ = Translate(-ratio[0], -ratio[1])(img.copy(), bboxes.copy())
+
+        # Define a scale factor according to the area of the object related to the whole image 
+        random_scale_factor = self.calculateScaleFactor(img, chosen_box, self.max_zoom)
+
+        # scale the image 
+        img_, bboxes_ = Scale(random_scale_factor, random_scale_factor)(img_.copy(), bboxes_.copy())
+        
+        return img_, bboxes_
+
+    def calculateScaleFactor(self, img, box, max_zoom):
+        img_area = img.shape[1] * img.shape[0]
+        box_area = bbox_area(np.array([box]))[0]
+        area_ratio = 1/box_area
+        
+        random_scale_factor = (1/5) * np.log(1 + 1/(bbox_area(np.array([box]))[0] / img.shape[1] /img.shape[0]))
+        random_scale_factor = min(random_scale_factor, max_zoom)
+        #print(random_scale_factor)
+        return random_scale_factor
+
+
 class RandomRotate(object):
     """Randomly rotates an image    
     
