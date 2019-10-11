@@ -44,8 +44,7 @@ def toYoloLabel(img, bboxes):
         ret.append(" ".join([cls_id, x_c, y_c, str(w), str(h)]))
     return "\n".join(ret)
 
-
-def main(args):
+def process_one_folder(new_folder, target_folder):
     if not os.path.exists(new_folder):
         os.mkdir(new_folder)
 
@@ -66,10 +65,21 @@ def main(args):
         txt_writter.write(yolo_bboxes)
         txt_writter.close()
 
+def main(args):
+    for PATH in glob.glob(os.path.join(args.dataset_folder, "*_ins")):
+        color_img_path = os.path.join(PATH, "ColorImage")
+        for each_record in glob.glob(os.path.join(color_img_path, "Record*")):
+            new_folder = os.path.join(each_record, "augmented")
+            for target_folder in glob.glob(os.path.join(each_record, "Camera*")):
+                print(target_folder)
+
+    
+
 
 args = argparse.ArgumentParser()
-args.add_argument('--target_folder', type=str, default="/home/kevin/ascent/dataset/apolloScape/road02_ins/ColorImage/Record001/Camera\ 5/")
-args.add_argument('--new_folder', type=str, default="/home/kevin/ascent/dataset/apolloScape/road02_ins/ColorImage/Record001/augmented_Camera\ 5/") 
+#args.add_argument('--target_folder', type=str, default="/home/kevin/ascent/dataset/apolloScape/road02_ins/ColorImage/Record001/Camera\ 5/")
+#args.add_argument('--new_folder', type=str, default="/home/kevin/ascent/dataset/apolloScape/road02_ins/ColorImage/Record001/augmented_Camera\ 5/") 
+args.add_argument('--dataset_folder', type=str, default="/home/kevin/ascent/dataset/apolloScape/") 
 main(args)
 #print(yolo_bboxes)
 #plotted_img = draw_rect(img_, bboxes_)
