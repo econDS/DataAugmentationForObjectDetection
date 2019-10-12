@@ -55,20 +55,25 @@ def process_one_folder(new_folder, target_folder):
 
         img = cv2.imread(each_img)[:,:,::-1]   #opencv loads images in bgr. the [:,:,::-1] does bgr -> rgb
         bboxes = fromYoloLabel(img, each_txt)
+        
         if len(bboxes) == 0:
             print("Empty label for {}".format(each_img))
             continue
-        seq = Sequence([RandomHorizontalFlip(0.5), conditionalZoomIn(3)])
-        img_, bboxes_ = seq(img.copy(), bboxes.copy())
-        yolo_bboxes = toYoloLabel(img_, bboxes_)
-        
-        # write new img
-        img_ = cv2.cvtColor(img_, cv2.COLOR_BGR2RGB)
-        cv2.imwrite(os.path.join(new_folder, os.path.basename(each_img)), img_)
-        # write new txt
-        txt_writter = open(os.path.join(new_folder, os.path.basename(each_txt)), "w+")
-        txt_writter.write(yolo_bboxes)
-        txt_writter.close()
+        #seq = Sequence([RandomHorizontalFlip(0.5), conditionalZoomIn(3)])
+        #seq = Sequence([RandomHorizontalFlip(0.5)])
+        res = CropIntoThree(2700, 608)(img.copy(), bboxes.copy())
+        for i, each_pair in enumerate(res):
+            (img_, bboxes_) = each_pair
+            img_processed, bboxes_processed = RandomHorizontalFlip(0.5)(img_.copy(), bboxes_.copy())
+            yolo_bboxes = toYoloLabel(img_processed, bboxes_processed)
+            
+            # write new img
+            img_processed = cv2.cvtColor(img_processed, cv2.COLOR_BGR2RGB)
+            cv2.imwrite(os.path.join(new_folder, str(i) + os.path.basename(each_img)), img_processed)
+            # write new txt
+            txt_writter = open(os.path.join(new_folder, str(i) + os.path.basename(each_txt)), "w+")
+            txt_writter.write(yolo_bboxes)
+            txt_writter.close()
 
 def main(args):
     print(args)
@@ -103,8 +108,8 @@ parser = argparse.ArgumentParser()
 #args.add_argument('--new_folder', type=str, default="/home/kevin/ascent/dataset/apolloScape/road02_ins/ColorImage/Record001/augmented_Camera\ 5/") 
 parser.add_argument('--dataset_folder', type=str, default="/home/kevin/ascent/dataset/apolloScape/")
 args = parser.parse_args() 
-#main(args)
-generateTxt(args.dataset_folder, os.path.join(args.dataset_folder, "train.txt"))
+main(args)
+#generateTxt(args.dataset_folder, os.path.join(args.dataset_folder, "train.txt"))
 #print(yolo_bboxes)
 #plotted_img = draw_rect(img_, bboxes_)
 #plt.imshow(plotted_img)

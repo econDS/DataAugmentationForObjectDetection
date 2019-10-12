@@ -402,7 +402,34 @@ class Translate(object):
 
         
         return img, bboxes
-    
+
+# first convert the image int a max_shape x max_shape square 
+# split into 3 square images, then output into output_shape x output_shape shape 
+class CropIntoThree(object):
+    def __init__(self, max_shape, output_shape):
+        self.output_shape = output_shape
+        self.max_shape = max_shape
+
+    def __call__(self, img, bboxes):
+        img_, bboxes_ = Resize(self.max_shape)(img.copy(), bboxes.copy())
+        # crop the sky and the car 
+        img_rm_car, bboxes_rm_car = Translate(0, 0.21)(img_.copy(), bboxes_.copy())
+        img_rm_sky, bboxes_rm_sky = Translate(0, -0.6)(img_rm_car.copy(), bboxes_rm_car.copy())
+        # split into left middle and right 
+        # left
+        img_left, bboxes_left = Scale(1.5, 1.5)(img_rm_sky.copy(), bboxes_rm_sky.copy())
+        img_left, bboxes_left = Resize(self.output_shape)(img_left, bboxes_left)
+        # middle
+        img_middle, bboxes_middle = Translate(-0.3, 0)(img_rm_sky.copy(), bboxes_rm_sky.copy())
+        img_middle, bboxes_middle = Scale(1.5, 1.5)(img_middle.copy(), bboxes_middle.copy())
+        img_middle, bboxes_middle = Resize(self.output_shape)(img_middle, bboxes_middle)
+        # right
+        img_right, bboxes_right = Translate(-0.6, 0)(img_rm_sky.copy(), bboxes_rm_sky.copy())
+        img_right, bboxes_right = Scale(1.5, 1.5)(img_right.copy(), bboxes_right.copy())
+        img_right, bboxes_right = Resize(self.output_shape)(img_right, bboxes_right)
+
+        return [(img_left, bboxes_left), (img_middle, bboxes_middle), (img_right, bboxes_right)]
+   
 class conditionalZoomIn(object):
     def __init__(self, max_zoom):
         self.max_zoom = max_zoom
