@@ -27,6 +27,8 @@ def fromYoloLabel(img, yolo_label):
 
     #inspect the bounding boxes
     bboxes = np.array(bboxes, dtype="float64")
+    if len(bboxes) == 0:
+        return bboxes
     bboxes = clip_box(bboxes, [0,0,1 + width, height], 0.25)
     return bboxes
 
@@ -53,6 +55,9 @@ def process_one_folder(new_folder, target_folder):
 
         img = cv2.imread(each_img)[:,:,::-1]   #opencv loads images in bgr. the [:,:,::-1] does bgr -> rgb
         bboxes = fromYoloLabel(img, each_txt)
+        if len(bboxes) == 0:
+            print("Empty label for {}".format(each_img))
+            continue
         seq = Sequence([RandomHorizontalFlip(0.5), conditionalZoomIn(3)])
         img_, bboxes_ = seq(img.copy(), bboxes.copy())
         yolo_bboxes = toYoloLabel(img_, bboxes_)
@@ -66,21 +71,40 @@ def process_one_folder(new_folder, target_folder):
         txt_writter.close()
 
 def main(args):
+    print(args)
     for PATH in glob.glob(os.path.join(args.dataset_folder, "*_ins")):
         color_img_path = os.path.join(PATH, "ColorImage")
         for each_record in glob.glob(os.path.join(color_img_path, "Record*")):
             new_folder = os.path.join(each_record, "augmented")
             for target_folder in glob.glob(os.path.join(each_record, "Camera*")):
                 print(target_folder)
+                process_one_folder(new_folder, target_folder)
 
-    
+# generate yolo format train.txt or val.txt
+def generateTxt(dataset_folder, dst):
+    counter = 0
+    for PATH in glob.glob(os.path.join(dataset_folder, "*_ins")):
+        color_img_path = os.path.join(PATH, "ColorImage")
+        for each_record in glob.glob(os.path.join(color_img_path, "Record*")):
+            new_folder = os.path.join(each_record, "augmented")
+            temp_txt_lst = []
+            for each_txt in glob.glob(os.path.join(new_folder, "*.txt")):
+                jpg_loc = each_txt.replace(".txt", ".jpg")
+                temp_txt_lst.append(jpg_loc)
+                counter += 1
+            dst_writter =  open(dst, "a+")
+            dst_writter.write("\n".join(temp_txt_lst) + "\n")
+            dst_writter.close()
+                   
+    print("Total " + str(counter))
 
-
-args = argparse.ArgumentParser()
+parser = argparse.ArgumentParser()
 #args.add_argument('--target_folder', type=str, default="/home/kevin/ascent/dataset/apolloScape/road02_ins/ColorImage/Record001/Camera\ 5/")
 #args.add_argument('--new_folder', type=str, default="/home/kevin/ascent/dataset/apolloScape/road02_ins/ColorImage/Record001/augmented_Camera\ 5/") 
-args.add_argument('--dataset_folder', type=str, default="/home/kevin/ascent/dataset/apolloScape/") 
-main(args)
+parser.add_argument('--dataset_folder', type=str, default="/home/kevin/ascent/dataset/apolloScape/")
+args = parser.parse_args() 
+#main(args)
+generateTxt(args.dataset_folder, os.path.join(args.dataset_folder, "train.txt"))
 #print(yolo_bboxes)
 #plotted_img = draw_rect(img_, bboxes_)
 #plt.imshow(plotted_img)
