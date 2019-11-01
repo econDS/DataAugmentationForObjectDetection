@@ -110,22 +110,36 @@ def main(args):
 '''
 
 # generate yolo format train.txt or val.txt
-def generateTxt(dataset_folder, dst):
+def generateTxt(dataset_folder, with_val=1):
     counter = 0
+    jpg_lst = []
+    txt_lst = []
     for PATH in glob.glob(os.path.join(dataset_folder, "*_ins")):
         color_img_path = os.path.join(PATH, "ColorImage")
         for each_record in glob.glob(os.path.join(color_img_path, "Record*")):
             new_folder = os.path.join(each_record, "augmented")
-            temp_txt_lst = []
             for each_txt in glob.glob(os.path.join(new_folder, "*.txt")):
                 jpg_loc = each_txt.replace(".txt", ".jpg")
-                temp_txt_lst.append(jpg_loc)
+                jpg_lst.append(jpg_loc)
+                txt_lst.append(each_txt)
                 counter += 1
-            dst_writter =  open(dst, "a+")
-            dst_writter.write("\n".join(temp_txt_lst) + "\n")
-            dst_writter.close()
-                   
+    X_train = jpg_lst
+
+    if with_val:
+        X_train, X_test, y_train, y_test = train_test_split(jpg_lst, txt_lst, test_size=0.1, random_state=42)
+
+        val_writter =  open(os.path.join(dataset_folder, "val.txt"), "w+")
+        val_writter.write("\n".join(X_test))
+        val_writter.close()
+        print("val: " + str(len(X_test)))
+
+    train_writter =  open(os.path.join(dataset_folder, "train.txt"), "w+")
+    train_writter.write("\n".join(X_train))
+    train_writter.close()
+    print("train: " + str(len(X_train)))
+
     print("Total " + str(counter))
+
 
 parser = argparse.ArgumentParser()
 #args.add_argument('--target_folder', type=str, default="/home/kevin/ascent/dataset/apolloScape/road02_ins/ColorImage/Record001/Camera\ 5/")
