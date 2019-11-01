@@ -90,6 +90,43 @@ class HorizontalFlip(object):
         return img, bboxes
 
 
+class AdjustBrightnessAndContrast(object):
+    '''
+    adjust the brightness and/or contrast of an image 
+    Parameters
+    ----------
+    brightness: float 
+    contrast: float
+    '''
+    def __init__(self, brightness = 0, contrast = 0):
+        self.brightness = brightness        
+        self.contrast = contrast
+
+    def __call__(self, img, boxes):
+        if self.brightness != 0:
+            if self.brightness > 0:
+                shadow = self.brightness
+                highlight = 255
+            else:
+                shadow = 0
+                highlight = 255 + self.brightness
+            alpha_b = (highlight - shadow)/255
+            gamma_b = shadow
+
+            buf = cv2.addWeighted(img, alpha_b, img, 0, gamma_b)
+        else:
+            buf = img.copy()
+
+        if self.contrast != 0:
+            f = 131*(self.contrast + 127)/(127*(131-self.contrast))
+            alpha_c = f
+            gamma_c = 127*(1-f)
+
+            buf = cv2.addWeighted(buf, alpha_c, buf, 0, gamma_c)
+
+        return buf, boxes\
+
+
 class RandomScale(object):
     """Randomly scales an image    
     
@@ -429,7 +466,8 @@ class CropIntoThree(object):
         img_right, bboxes_right = Resize(self.output_shape)(img_right, bboxes_right)
 
         return [(img_left, bboxes_left), (img_middle, bboxes_middle), (img_right, bboxes_right)]
-   
+
+# dynamically zoom in toward an object of interest  
 class conditionalZoomIn(object):
     def __init__(self, max_zoom):
         self.max_zoom = max_zoom

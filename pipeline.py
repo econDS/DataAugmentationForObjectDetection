@@ -46,12 +46,13 @@ def toYoloLabel(img, bboxes):
         ret.append(" ".join([cls_id, x_c, y_c, str(w), str(h)]))
     return "\n".join(ret)
 
+# a folder is assumed to have jpg images and yolo label txts  
 def process_one_folder(new_folder, target_folder):
     if not os.path.exists(new_folder):
         os.mkdir(new_folder)
 
     for each_txt in glob.glob(os.path.join(target_folder, "*.txt")):
-        each_img = each_txt.replace(".txt", ".jpg")
+        each_img = each_txt.replace(".txt", ".png")
 
         img = cv2.imread(each_img)[:,:,::-1]   #opencv loads images in bgr. the [:,:,::-1] does bgr -> rgb
         bboxes = fromYoloLabel(img, each_txt)
@@ -59,9 +60,20 @@ def process_one_folder(new_folder, target_folder):
         if len(bboxes) == 0:
             print("Empty label for {}".format(each_img))
             continue
-        #seq = Sequence([RandomHorizontalFlip(0.5), conditionalZoomIn(3)])
-        #seq = Sequence([RandomHorizontalFlip(0.5)])
-        res = CropIntoThree(2700, 608)(img.copy(), bboxes.copy())
+        #seq = Sequence([AdjustBrightnessAndContrast(64, 32), RandomHorizontalFlip(0.5), conditionalZoomIn(3)])
+        seq = Sequence([RandomHorizontalFlip(0.5)])
+        img_, bboxes_ = seq(img.copy(), bboxes.copy())
+
+        yolo_bboxes = toYoloLabel(img_, bboxes_)
+        # write new img
+        img_processed = cv2.cvtColor(img_, cv2.COLOR_BGR2RGB)
+        cv2.imwrite(os.path.join(new_folder, os.path.basename(each_img)), img_processed)
+        # write new txt
+        txt_writter = open(os.path.join(new_folder, os.path.basename(each_txt)), "w+")
+        txt_writter.write(yolo_bboxes)
+        txt_writter.close()
+
+        '''
         for i, each_pair in enumerate(res):
             (img_, bboxes_) = each_pair
             img_processed, bboxes_processed = RandomHorizontalFlip(0.5)(img_.copy(), bboxes_.copy())
@@ -74,6 +86,17 @@ def process_one_folder(new_folder, target_folder):
             txt_writter = open(os.path.join(new_folder, str(i) + os.path.basename(each_txt)), "w+")
             txt_writter.write(yolo_bboxes)
             txt_writter.close()
+        '''
+
+# main function for tsinghua cyclists 
+def main(args):
+    print(args)
+    new_folder = os.path.join(args.dataset_folder, "augmented")    
+    process_one_folder(new_folder, target_folder=args.dataset_folder)
+
+
+'''
+# main function for apollo
 
 def main(args):
     print(args)
@@ -84,6 +107,7 @@ def main(args):
             for target_folder in glob.glob(os.path.join(each_record, "Camera*")):
                 print(target_folder)
                 process_one_folder(new_folder, target_folder)
+'''
 
 # generate yolo format train.txt or val.txt
 def generateTxt(dataset_folder, dst):
