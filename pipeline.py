@@ -61,7 +61,7 @@ def process_one_folder(new_folder, target_folder):
             print("Empty label for {}".format(each_img))
             continue
         #seq = Sequence([AdjustBrightnessAndContrast(64, 32), RandomHorizontalFlip(0.5), conditionalZoomIn(3)])
-        seq = Sequence([RandomHorizontalFlip(0.5)])
+        seq = Sequence([RandomHSV(15, 15, 15)])
         img_, bboxes_ = seq(img.copy(), bboxes.copy())
 
         yolo_bboxes = toYoloLabel(img_, bboxes_)
