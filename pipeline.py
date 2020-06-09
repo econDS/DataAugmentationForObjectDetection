@@ -48,6 +48,8 @@ def toYoloLabel(img, bboxes):
 
 def transform(meta_data, img, bboxes, by):
     new_folder, each_img, each_txt = meta_data
+    if by not in ["HSV", "HorizontalFlip", "Scale", "Translate", "Rotate", "Shear"]:
+        print("We don't have", by, "augmentation")
     if by == "HSV":
         img_, bboxes_ = RandomHSV(15, 15, 15)(img.copy(), bboxes.copy())
     if by == "HorizontalFlip":
@@ -64,7 +66,9 @@ def transform(meta_data, img, bboxes, by):
     yolo_bboxes = toYoloLabel(img_, bboxes_)
     # write new img
     img_processed = cv2.cvtColor(img_, cv2.COLOR_BGR2RGB)
-    cv2.imwrite(os.path.join(new_folder, os.path.basename(each_img).split(".")[0]+'_'+by+'.jpg'), img_processed)
+    img_save_name = os.path.basename(each_img).split(".")[0]+'_'+by+'.jpg'
+    cv2.imwrite(os.path.join(new_folder, img_save_name), img_processed)
+    print(img_save_name)
     # write new txt
     txt_writter = open(os.path.join(new_folder, os.path.basename(each_txt).split(".")[0]+'_'+by+'.txt'), "w+")
     txt_writter.write(yolo_bboxes)
@@ -167,7 +171,7 @@ def generateTxt(dataset_folder, with_val=1):
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-d', '--dataset_folder', type=str, default="imglabel")
-parser.add_argument('-a', '--augment', type=str, default="all",
+parser.add_argument('-a', '--augment', type=str, default="All",
                     help='eg. HSV, HorizontalFlip, Scale, Translate, Rotate, Shear. Default=All')
 args = parser.parse_args() 
 main(args)
