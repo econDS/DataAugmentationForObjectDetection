@@ -2,9 +2,9 @@ from data_aug.data_aug import *
 from data_aug.bbox_util import *
 import numpy as np 
 import cv2 
-import matplotlib.pyplot as plt 
 import glob
 import argparse
+import os
 
 def fromYoloLabel(img, yolo_label):
     file_reader = open(yolo_label, "r")
@@ -12,7 +12,7 @@ def fromYoloLabel(img, yolo_label):
     height = img.shape[0]
     bboxes = []
     for row in file_reader:
-        tmp = []
+        # tmp = []
         row = row.strip("\n").split(" ")
         x_c = float(row[1])
         y_c = float(row[2])
@@ -46,13 +46,38 @@ def toYoloLabel(img, bboxes):
         ret.append(" ".join([cls_id, x_c, y_c, str(w), str(h)]))
     return "\n".join(ret)
 
+def transform(meta_data, img, bboxes, by):
+    new_folder, each_img, each_txt = meta_data
+    if by == "HSV":
+        img_, bboxes_ = RandomHSV(15, 15, 15)(img.copy(), bboxes.copy())
+    if by == "HorizontalFlip":
+        img_, bboxes_ = RandomHorizontalFlip(1)(img.copy(), bboxes.copy())
+    if by == "Scale":
+        img_, bboxes_ = RandomScale(0.3, diff = True)(img.copy(), bboxes.copy())
+    if by == "Translate":
+        img_, bboxes_ = RandomTranslate(0.3, diff = True)(img.copy(), bboxes.copy())
+    if by == "Rotate":
+        img_, bboxes_ = RandomRotate(30)(img.copy(), bboxes.copy())
+    if by == "Shear":
+        img_, bboxes_ = RandomShear(0.3)(img.copy(), bboxes.copy())
+    
+    yolo_bboxes = toYoloLabel(img_, bboxes_)
+    # write new img
+    img_processed = cv2.cvtColor(img_, cv2.COLOR_BGR2RGB)
+    cv2.imwrite(os.path.join(new_folder, os.path.basename(each_img).split(".")[0]+'_'+by+'.jpg'), img_processed)
+    # write new txt
+    txt_writter = open(os.path.join(new_folder, os.path.basename(each_txt).split(".")[0]+'_'+by+'.txt'), "w+")
+    txt_writter.write(yolo_bboxes)
+    txt_writter.close()
+    
+
 # a folder is assumed to have jpg images and yolo label txts  
 def process_one_folder(new_folder, target_folder):
     if not os.path.exists(new_folder):
         os.mkdir(new_folder)
 
     for each_txt in glob.glob(os.path.join(target_folder, "*.txt")):
-        each_img = each_txt.replace(".txt", ".png")
+        each_img = each_txt.replace(".txt", ".jpg")
 
         img = cv2.imread(each_img)[:,:,::-1]   #opencv loads images in bgr. the [:,:,::-1] does bgr -> rgb
         bboxes = fromYoloLabel(img, each_txt)
@@ -60,18 +85,17 @@ def process_one_folder(new_folder, target_folder):
         if len(bboxes) == 0:
             print("Empty label for {}".format(each_img))
             continue
-        #seq = Sequence([AdjustBrightnessAndContrast(64, 32), RandomHorizontalFlip(0.5), conditionalZoomIn(3)])
-        seq = Sequence([RandomHSV(15, 15, 15)])
-        img_, bboxes_ = seq(img.copy(), bboxes.copy())
-
-        yolo_bboxes = toYoloLabel(img_, bboxes_)
-        # write new img
-        img_processed = cv2.cvtColor(img_, cv2.COLOR_BGR2RGB)
-        cv2.imwrite(os.path.join(new_folder, os.path.basename(each_img)), img_processed)
-        # write new txt
-        txt_writter = open(os.path.join(new_folder, os.path.basename(each_txt)), "w+")
-        txt_writter.write(yolo_bboxes)
-        txt_writter.close()
+        meta_data = (new_folder, each_img, each_txt)
+        if args.augment == 'all':
+            trans_list = ["HSV", "HorizontalFlip", "Scale", "Translate",
+                          "Rotate", "Shear"]
+            for trans in trans_list:
+                transform(meta_data, img, bboxes, trans)
+        else:
+            trans_list = args.augment.split("+")
+            for trans in trans_list:
+                transform(meta_data, img, bboxes, trans)
+        
 
         '''
         for i, each_pair in enumerate(res):
@@ -142,15 +166,7 @@ def generateTxt(dataset_folder, with_val=1):
 
 
 parser = argparse.ArgumentParser()
-#args.add_argument('--target_folder', type=str, default="/home/kevin/ascent/dataset/apolloScape/road02_ins/ColorImage/Record001/Camera\ 5/")
-#args.add_argument('--new_folder', type=str, default="/home/kevin/ascent/dataset/apolloScape/road02_ins/ColorImage/Record001/augmented_Camera\ 5/") 
-parser.add_argument('--dataset_folder', type=str, default="/home/kevin/ascent/dataset/apolloScape/")
+parser.add_argument('-d', '--dataset_folder', type=str, default="imglabel")
+parser.add_argument('-a', '--augment', type=str, default="all")
 args = parser.parse_args() 
 main(args)
-#generateTxt(args.dataset_folder, os.path.join(args.dataset_folder, "train.txt"))
-#print(yolo_bboxes)
-#plotted_img = draw_rect(img_, bboxes_)
-#plt.imshow(plotted_img)
-#plt.show()
-
-
