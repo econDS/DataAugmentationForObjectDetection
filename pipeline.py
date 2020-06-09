@@ -86,7 +86,7 @@ def process_one_folder(new_folder, target_folder):
             print("Empty label for {}".format(each_img))
             continue
         meta_data = (new_folder, each_img, each_txt)
-        if args.augment == 'all':
+        if args.augment == 'All':
             trans_list = ["HSV", "HorizontalFlip", "Scale", "Translate",
                           "Rotate", "Shear"]
             for trans in trans_list:
@@ -167,6 +167,7 @@ def generateTxt(dataset_folder, with_val=1):
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-d', '--dataset_folder', type=str, default="imglabel")
-parser.add_argument('-a', '--augment', type=str, default="all")
+parser.add_argument('-a', '--augment', type=str, default="all",
+                    help='eg. HSV, HorizontalFlip, Scale, Translate, Rotate, Shear. Default=All')
 args = parser.parse_args() 
 main(args)
